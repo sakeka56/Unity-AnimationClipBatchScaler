@@ -17,11 +17,10 @@ This project is a tool for Unity to scale animation clips, allowing batch adjust
 
 # Instructions
 1. Download and import the project into Unity.
-2. Open the Unity editor and navigate to the menu bar `Tools > Animation Scaling Tool`.
+2. Open the Unity editor and navigate to the menu bar `Tools > Animation Batch Scaler`.
 3. In the pop-up window, select the animation clips to scale (FBX files or AnimationClips).
 4. Enter the target scale and click to scale.
 
 # Planned Development
 - Output directory selection
 - Scale ratio input
-
