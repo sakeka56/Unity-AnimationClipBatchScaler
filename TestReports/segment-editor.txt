@@ -1,0 +1,10 @@
+PASS Split, frame snapping, metadata and shared boundary
+PASS Weighted Bezier crop between keys and retiming preserve curve shape
+PASS Step curves, short tracks and wrapped tracks
+PASS Move, reorder, non-overlap, scale clamping and Undo
+PASS Object references and event payload survive split
+PASS Combined timeline frame samples, gaps and hard cuts
+PASS Export folder, unique names, source immutability and persisted session
+PASS Imported FBX clips can be split and exported
+PASS Editor window creation, shortcuts and isolated preview sampling
+PASS: 9 cases, 479 assertions; Unity 6000.3.22f1
