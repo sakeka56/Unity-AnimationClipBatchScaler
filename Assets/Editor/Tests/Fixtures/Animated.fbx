@@ -1,0 +1,129 @@
+; FBX 7.4.0 project file - minimal synthetic animation regression fixture.
+FBXHeaderExtension:  {
+    FBXHeaderVersion: 1003
+    FBXVersion: 7400
+    Creator: "AnimationClipBatchScaler regression tests"
+}
+GlobalSettings:  {
+    Version: 1000
+    Properties70:  {
+        P: "UpAxis", "int", "Integer", "",1
+        P: "UpAxisSign", "int", "Integer", "",1
+        P: "FrontAxis", "int", "Integer", "",2
+        P: "FrontAxisSign", "int", "Integer", "",-1
+        P: "CoordAxis", "int", "Integer", "",0
+        P: "CoordAxisSign", "int", "Integer", "",1
+        P: "UnitScaleFactor", "double", "Number", "",100
+        P: "TimeMode", "enum", "", "",6
+        P: "TimeSpanStart", "KTime", "Time", "",0
+        P: "TimeSpanStop", "KTime", "Time", "",92372316000
+   
+}
+}
+Documents:  {
+    Count: 1
+    Document: 100, "Scene", "Scene" {
+        RootNode: 0
+   
+}
+}
+Definitions:  {
+    Version: 100
+    Count: 6
+    ObjectType: "Model" {
+Count: 2
+}
+    ObjectType: "AnimationStack" {
+Count: 1
+}
+    ObjectType: "AnimationLayer" {
+Count: 1
+}
+    ObjectType: "AnimationCurveNode" {
+Count: 1
+}
+    ObjectType: "AnimationCurve" {
+Count: 1
+}
+}
+Objects:  {
+    Model: 1, "Model::Root", "Null" {
+        Version: 232
+        Properties70:  {
+            P: "Lcl Translation", "Lcl Translation", "", "A",0,0,0
+            P: "Lcl Rotation", "Lcl Rotation", "", "A",0,0,0
+            P: "Lcl Scaling", "Lcl Scaling", "", "A",1,1,1
+       
+}
+   
+}
+    Model: 2, "Model::Animated", "Null" {
+        Version: 232
+        Properties70:  {
+            P: "Lcl Translation", "Lcl Translation", "", "A",0,0,0
+            P: "Lcl Rotation", "Lcl Rotation", "", "A",0,0,0
+            P: "Lcl Scaling", "Lcl Scaling", "", "A",1,1,1
+       
+}
+   
+}
+    AnimationStack: 10, "AnimStack::Take", "" {
+        Properties70:  {
+            P: "LocalStart", "KTime", "Time", "",0
+            P: "LocalStop", "KTime", "Time", "",92372316000
+            P: "ReferenceStart", "KTime", "Time", "",0
+            P: "ReferenceStop", "KTime", "Time", "",92372316000
+       
+}
+   
+}
+    AnimationLayer: 11, "AnimLayer::BaseLayer", "" {
+}
+    AnimationCurveNode: 12, "AnimCurveNode::T", "" {
+        Properties70:  {
+            P: "d|X", "Number", "", "A",0
+            P: "d|Y", "Number", "", "A",0
+            P: "d|Z", "Number", "", "A",0
+       
+}
+   
+}
+    AnimationCurve: 13, "AnimCurve::X", "" {
+        Default: 0
+        KeyVer: 4008
+        KeyTime: *2 {
+a: 0,92372316000
+}
+        KeyValueFloat: *2 {
+a: 0,2
+}
+        KeyAttrFlags: *1 {
+a: 24836
+}
+        KeyAttrDataFloat: *4 {
+a: 0,0,0,0
+}
+        KeyAttrRefCount: *1 {
+a: 2
+}
+   
+}
+}
+Connections:  {
+    C: "OO",1,0
+    C: "OO",2,1
+    C: "OO",11,10
+    C: "OO",12,11
+    C: "OP",12,2,"Lcl Translation"
+    C: "OP",13,12,"d|X"
+}
+Takes:  {
+    Current: "Take"
+    Take: "Take" {
+        FileName: "Take.tak"
+        LocalTime: 0,92372316000
+        ReferenceTime: 0,92372316000
+   
+}
+}
+

@@ -361,3 +361,17 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Unity generated files
+/[Ll]ibrary/
+/[Tt]emp/
+/[Uu]ser[Ss]ettings/
+/[Ll]ogs/
+/[Oo]bj/
+/Build/
+/Builds/
+*.csproj
+*.sln
+!Assets/**/*.meta
+!Assets.meta
+!Packages/manifest.json
+!Packages/packages-lock.json
