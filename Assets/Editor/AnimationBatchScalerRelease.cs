@@ -3,6 +3,8 @@ using UnityEditor;
 
 public static class AnimationBatchScalerRelease
 {
+    public const string Version = "1.0.0";
+
     public static void Export()
     {
         Directory.CreateDirectory("Build");
@@ -10,7 +12,8 @@ public static class AnimationBatchScalerRelease
             "Assets/Editor/AnimationBatchScaler_CN.cs",
             "Assets/Editor/AnimationBatchScaler_EN.cs",
             "Assets/Editor/AnimationBatchScalerUtility.cs",
-            "Assets/Editor/AnimationBatchScalerWindow.cs"
-        }, "Build/AnimationClipBatchScaler-0.0.1.unitypackage", ExportPackageOptions.Default);
+            "Assets/Editor/AnimationBatchScalerWindow.cs",
+            "Assets/Editor/AnimationSegmentEditor"
+        }, "Build/UnityAnimationTools-" + Version + ".unitypackage", ExportPackageOptions.Recurse);
     }
 }

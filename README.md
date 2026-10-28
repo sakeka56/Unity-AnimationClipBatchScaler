@@ -1,115 +1,188 @@
-# Unity Animation Tools · AnimationClipBatchScaler
+# Unity Animation Tools
 
-面向 Unity 的动画编辑工具集，支持独立 `.anim` 和 FBX 内嵌动画。工程使用 **Unity 6000.3.22f1（6.3.22）**。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-| 工具 | 菜单入口 | 主要功能 |
+Two Unity Editor tools for working with standalone `.anim` files and animations embedded in FBX files: cut and rearrange a clip with **Animation Segment Editor**, or retime multiple clips with **Animation Batch Scaler**.
+
+## Choose a tool
+
+| What you want to do | Tool | Open from |
 | --- | --- | --- |
-| 动画批量缩放器 | Tools > 动画批量缩放器 / Animation Batch Scaler | 批量指定目标时长或时长比例，选择输出目录 |
-| 动画分段编辑器 | Tools > 动画分段编辑器 | 关键帧时间线、模型预览、切割、移动重排、分段变速与导出 |
+| Split a clip, rearrange sections, or change the speed of one section | Animation Segment Editor | `Window > Animation > Animation Segment Editor` |
+| Give multiple clips a target duration or apply the same duration ratio | Animation Batch Scaler | `Tools > Animation Batch Scaler` |
 
-## 安装
+![Animation Segment Editor demonstration](Documentation/Media/segment-editor-demo.gif)
 
-- **使用完整工程**：克隆仓库后，通过 Unity Hub 添加工程目录，用 Unity 6000.3.22f1 打开。
-- **导入已有工程**：复制 `Assets/Editor` 下的四个批量缩放脚本（`AnimationBatchScaler_CN.cs`、`AnimationBatchScaler_EN.cs`、`AnimationBatchScalerUtility.cs`、`AnimationBatchScalerWindow.cs`）及 `AnimationSegmentEditor` 文件夹，保留对应 `.meta`。不需要复制 `Tests` 或发布包导出脚本。
-- **使用发布包**：[0.0.1 Release](https://github.com/sakeka56/Unity-AnimationClipBatchScaler/releases/tag/0.0.1) 包含批量缩放器；新增分段编辑器请使用当前仓库源码。
+[Watch the full video](Documentation/Media/segment-editor-demo.mp4)
 
-## 动画分段编辑器
+## Install
 
-入口：**Tools > 动画分段编辑器**，或 **Window > Animation > Animation Segment Editor**。
+Developed and verified with **Unity 6000.3.22f1**. Other Unity versions have not been verified. The tools run in the Editor and require no additional UPM packages.
 
-1. 将 `.anim` 或 FBX 文件直接拖入左上角插槽；FBX 包含多个动画时，通过旁边的下拉框选择。也可在 Project 中选中资源后点击“载入所选动画”。
-2. 左侧查看关键帧、对象引用轨道和动画事件；点击或拖动时间尺可调整播放头。可搜索轨道、缩放和滚动时间线。
-3. 右侧指定匹配的模型 / Prefab 预览。没有自带可渲染模型的动画，在手动指定模型后会将其记为本项目的默认预览模型，关闭并重开窗口仍可复用；带模型的 FBX 优先使用自身模型。FBX 动画会自动使用同文件模型；独立 `.anim` 会尝试使用当前选择的模型或场景中引用该动画的对象。可点击“自动定位模型”，使用“模型居中 / F”重新取景。仅含骨骼的 FBX 需要另行指定带网格的匹配模型。
-4. 使用下列工具编辑片段，上方卡片可填写各片段的 **Name**，并显示片段数量、片段时长和总时长。
-5. 保存“编辑工程”以便下次继续；选择 Assets 内的输出文件夹，一键导出动画。“选择…”弹窗中新建的目录会自动同步到插槽。
+### Import the 1.0.0 package
 
-| 快捷键 | 操作 | 效果 |
+1. Download `UnityAnimationTools-1.0.0.unitypackage` from the [1.0.0 release page](https://github.com/sakeka56/Unity-AnimationClipTools/releases/tag/1.0.0).
+2. In Unity, choose `Assets > Import Package > Custom Package…`, select the package, and import all contents.
+3. Wait for compilation, then open the tools from Tools or Window. The 1.0.0 package includes both tools.
+
+### Install from source in your existing project
+
+1. Download or clone this repository.
+2. Copy the following files and folder into your project's `Assets/Editor`, including their `.meta` files:
+
+   ```text
+   Assets/Editor/
+   ├── AnimationBatchScaler_CN.cs
+   ├── AnimationBatchScaler_EN.cs
+   ├── AnimationBatchScalerUtility.cs
+   ├── AnimationBatchScalerWindow.cs
+   └── AnimationSegmentEditor/       (entire folder)
+   ```
+
+3. Return to Unity and wait for script compilation. Open either tool from the menus above.
+
+`Tests` and `AnimationBatchScalerRelease.cs` are not required. If you only need the segment editor, copy `AnimationSegmentEditor/` and `AnimationBatchScalerUtility.cs` with their `.meta` files.
+
+### Open the example project
+
+Clone the repository, add its root folder in Unity Hub, and open it with Unity **6000.3.22f1**.
+
+The [0.0.1 release package](https://github.com/sakeka56/Unity-AnimationClipTools/releases/tag/0.0.1) contains **only the batch scaler**. Use the current source to install both tools.
+
+## Animation Segment Editor
+
+Open `Window > Animation > Animation Segment Editor`, or `Tools > 动画分段编辑器`.
+
+The segment editor currently has a Chinese interface. The instructions below include the labels you will see in the window.
+
+### 1. Load an animation
+
+Drag a `.anim` or FBX asset from the Project window into the source slot at the top left. If the FBX contains multiple clips, choose one from the dropdown beside it. Alternatively, select the asset in Project and click **载入所选动画** (Load selected animation).
+
+The left side displays the clip's keyframe tracks and animation events. Click or drag the ruler to move the playhead. Use the search field to find a track.
+
+**Save your current editing session before switching the source clip:** switching creates a new session.
+
+### 2. Preview on a model
+
+Assign a compatible model or Prefab in the right-hand preview panel. For FBX clips, the tool first tries the model in the same file. For standalone clips, it also tries the selected model or scene objects that reference the clip.
+
+- **自动定位模型** (Auto locate model): try finding a compatible preview target again.
+- **模型居中 / F** (Frame model): center the camera on the current pose.
+- Drag in the preview to rotate the view; scroll to zoom.
+- Press **Space** or click **播放** (Play) to play or pause.
+
+The model hierarchy and animation binding paths must match. A skeleton-only FBX needs a separate matching model with a mesh; Humanoid clips need a compatible Avatar.
+
+For clips without their own renderable model, a manually assigned model is remembered as this project's default preview target. FBX files with a renderable model continue to use their own model. Preview samples a copy and does not modify the scene object.
+
+### 3. Cut, rearrange, and retime
+
+| Tool | How to use it | Result |
 | --- | --- | --- |
-| C | 点击片段或关键帧区域 | 按最近帧切割 |
-| W | 拖动片段色块 | 移动到空位或重排 |
-| S | 拖动片段色块（可连续操作） | 固定左端，改变时长和播放速度 |
-| 空格 | 播放 / 暂停 | 预览当前时间线 |
-| Alt＋滚轮 | 时间轴上滚动 | 以鼠标所在时间为中心缩放 |
-| 鼠标中键 | 时间轴内拖动 | 同时左右、上下平移 |
-| Ctrl/Cmd+Z | 撤销 | 撤销片段编辑或导出 |
+| **C — 切割** (Cut) | Click a segment or its keyframe area | Split at the nearest frame |
+| **W — 移动** (Move) | Drag a colored segment | Move into free space or past another segment to reorder |
+| **S — 缩放** (Retime) | Drag anywhere on a colored segment; repeated drags are supported | Keep the left edge fixed and change duration / playback speed |
 
-片段以不同颜色区分，支持右侧数值精调。单轨道不允许重叠，空隙保持上一段末帧。源动画不被改写。
+You can also position the playhead and click **切播放头** (Cut at playhead).
 
-导出内容可分别勾选：
+Select a segment to edit **Name**, **时间线位置（秒）** (Timeline position in seconds), and **片段时长（秒）** (Segment duration in seconds) on the right. Names can also be edited in the cards above the timeline. Use **恢复本段原始时长** to restore its source duration, or **移除此片段** to remove it from the arrangement.
 
-- **各片段 `.anim`**：按时间线顺序生成 `01_Name.anim`、`02_Name.anim` 等，每段从零秒开始。
-- **完整时间线（按帧）**：生成 `SourceName_Edited.anim`，保留片段顺序、位置、变速和空隙；浮点曲线按源帧率采样。
+For example, cut a 3-second clip at 1 s and 2 s. Select the middle segment and set its duration to 0.5 s: that section now plays at twice its original speed. Use W to move the following segment if you want to close the gap.
 
-同名文件自动编号。保存的 `AnimationEditSession.asset` 保留分段编辑信息；导出的 `.anim` 用于播放。
+Segments cannot overlap. Retiming stops at the next segment, so move that segment away first if you need more space. Moving a segment does not automatically shift later segments. Gaps hold the previous segment's final pose; cuts switch directly without blending.
 
-[分段编辑器完整使用说明](Documentation/AnimationSegmentEditor.md) · [技术设计与维护说明](Documentation/TechnicalDesign.md)
+See the demo at the top of this guide, or [watch the full video](Documentation/Media/segment-editor-demo.mp4).
 
-## 动画批量缩放器
+### 4. Save an editable session
 
-1. 打开 **Tools > 动画批量缩放器**，或英文入口 **Tools > Animation Batch Scaler**。
-2. 在 Project 中选中一个或多个 `.anim` / FBX。选中 FBX 会处理其有效动画；选中某个动画子资源时只处理该剪辑。重复选择去重，预览剪辑跳过。
-3. 选择“目标时长”或“时长比例”。比例含义为 **新时长 = 原时长 × 比例**：`0.5` 时长减半、速度加倍；`2` 时长加倍、速度减半。
-4. 选择 Assets 内已存在的输出文件夹；留空时保存在源文件旁。
-5. 点击执行缩放。
+Click **保存编辑工程…** (Save editing session) to create an `AnimationEditSession` `.asset`. It stores the source clip reference, segment names, source ranges, timeline positions, and durations.
 
-默认生成新文件，重名自动编号。勾选“覆盖原始 .anim”会原地更新可写的独立 `.anim`，保留 GUID 和已有引用，支持撤销；FBX 内嵌或只读剪辑仍导出为新文件。
+To continue later, assign this asset to **编辑工程** (Editing session) near the top of the window. Save before closing the window or switching clips. The session asset does not include the preview model or window layout.
 
-缩放保留关键帧加权信息、曲线循环方式、对象引用、动画事件及参数、帧率和剪辑设置；关键帧与事件时间同步缩放，切线按比例调整。无效数值被拒绝，零时长剪辑跳过。此操作调整时间轴，不缩放位置等属性值。
+### 5. Export animations
 
-## 验证与限制
+1. Choose a folder inside the current project's **Assets** in **输出目录** (Output directory). The **选择…** (Browse) dialog also supports creating a new folder.
+2. Enable one or both export options:
 
-已在 Unity **6000.3.22f1** 验证：
+   | Option | Output | When to use it |
+   | --- | --- | --- |
+   | **各片段 .anim** (Individual segments) | `01_Name.anim`, `02_Name.anim`, …; each starts at 0 s | Use each section as a separate clip |
+   | **完整时间线（按帧）** (Full timeline, sampled per frame) | `SourceName_Edited.anim` | Use the entire edited arrangement as one clip |
 
-| 检查 | 结果 | 报告 |
+3. Click **一键导出** (Export). Use the resulting `.anim` assets in your animation workflow, such as an Animator Controller.
+
+Exports keep the source unchanged and use unique filenames when a file already exists. The combined clip includes ordering, retiming, and gaps; float curves are sampled at the source frame rate, so interpolation between frames may differ from the original curves.
+
+**Exporting does not save the editing session.** Save the `.asset` as well if you want to keep editing later. The session is Editor-only; use the exported `.anim` files for runtime playback.
+
+![Saved animation editing session and segment list](Documentation/Images/edit-session.png)
+
+The `.asset` shown stores the source reference and three segments. Load it in 编辑工程 to resume editing.
+
+### Timeline shortcuts
+
+| Input | Action |
+| --- | --- |
+| C / W / S | Select Cut / Move / Retime |
+| Space | Play / pause |
+| F | Frame the preview model |
+| Alt + mouse wheel | Zoom around the time under the pointer |
+| Middle-button drag | Pan horizontally and scroll tracks vertically |
+| Mouse wheel / Shift + mouse wheel | Scroll vertically / horizontally |
+| Ctrl/Cmd + Z | Undo edits or export |
+
+Tool shortcuts do not switch tools while you are editing text. Unity Undo/Redo is supported for segment editing and export.
+
+## Animation Batch Scaler
+
+1. Open `Tools > Animation Batch Scaler` (English), or `Tools > 动画批量缩放器` (Chinese).
+2. Select one or more `.anim` / FBX assets in the **Project** window. Selecting an FBX processes its valid clips; selecting an individual clip sub-asset processes only that clip. Duplicate selections and preview clips are skipped.
+3. Choose **Target duration** or **Duration ratio**, then enter a value greater than zero.
+4. Choose an existing output folder inside **Assets**, or leave it empty to save beside each source asset.
+5. Click **Scale animations**.
+
+| Mode | Example | Result |
 | --- | --- | --- |
-| 原批量缩放器回归 | 8 个场景，68 项断言通过 | [regression.txt](TestReports/regression.txt) |
-| 分段编辑器回归 | 9 个场景，482 项断言通过 | [segment-editor.txt](TestReports/segment-editor.txt) |
-| 运行中编辑器定向回归 | 30 项断言通过：Alt＋滚轮、中键平移、新建目录同步、默认模型保存条件 | [segment-navigation.txt](TestReports/segment-navigation.txt) |
-| 独立图形窗口验收 | C 鼠标切割、W 拖动重排、S 连续变速、横向滚动条拖动、F 居中与预览渲染通过 | [segment-editor-ui.txt](TestReports/segment-editor-ui.txt) |
+| Target duration | Enter `1.5` | Every processed clip becomes 1.5 seconds long |
+| Duration ratio | Enter `0.5` | Half the duration, twice the speed |
+| Duration ratio | Enter `2` | Twice the duration, half the speed |
 
-回归不依赖额外测试包。日常交互验证复用当前编辑器：选择 **Tools > Animation Segment Tests > Navigation, folders and default preview**。该入口创建临时测试窗口和资源，结束后恢复选择与默认模型设置，保持 Unity 运行。
+**New duration = original duration × ratio.** This changes animation timing, not property values such as position or model size.
 
-以下完整数据回归命令用于本工程尚未打开的离线验证：
+By default, the tool creates `ClipName_scaled.anim` files and adds a unique suffix if needed. Enable **Overwrite original .anim** to update writable standalone `.anim` assets in place, preserving GUIDs and existing references. Embedded FBX clips and read-only clips still export as new files. Undo is supported.
 
-```powershell
-unity run . --editor-path "<本地 Unity.exe 的绝对路径>" --timeout 240 --log-file Logs/regression.log --no-tail -- -nographics -executeMethod AnimationBatchScalerTests.Run
-unity run . --editor-path "<本地 Unity.exe 的绝对路径>" --timeout 240 --log-file Logs/segment-tests.log --no-tail -- -executeMethod AnimationSegmentEditorTests.Run
-```
+Retiming preserves curve weights, wrap modes, object reference tracks, event parameters, frame rate, and clip settings. Keyframe and event times are scaled together. Zero-length clips are skipped.
 
-第二条命令启用图形设备，用于验证窗口与快捷键。图形窗口鼠标验收的单独运行方式见[技术文档](Documentation/TechnicalDesign.md#测试与复现)。
+<img src="Documentation/Images/batch-scaler.png" alt="Animation Batch Scaler interface in Chinese" width="520" />
 
-FBX 测试使用合成夹具，尚未覆盖所有第三方 DCC 文件、Humanoid 根运动和 IK/约束系统。分段编辑器展示关键帧并编辑片段，不提供 Unity Animation 窗口完整的逐关键帧数值编辑功能。完整时间线采用按帧采样，帧间插值可能与原曲线不同。
+No clips are selected in this screenshot, so the action button is disabled. Select animation assets in Project to continue.
 
-## 文档
+## Common questions
 
-- [分段编辑器使用说明](Documentation/AnimationSegmentEditor.md)
-- [技术设计、数据模型与导出算法](Documentation/TechnicalDesign.md)
-- [原工具修改前后的验证记录](TestReports/verification.md)
-- [许可证](LICENSE.txt)
+| Problem | What to check |
+| --- | --- |
+| Menus do not appear | Keep the scripts under `Assets/Editor`, include the required files, and resolve Console compilation errors |
+| Preview is empty or the model does not animate | Assign a matching model with a mesh, check binding paths / Avatar, then press F |
+| A segment will not become longer | Move the next segment away; segments cannot overlap |
+| Export is disabled | Load a source, select an Assets folder, and enable at least one export option |
+| Scale animations is disabled | Select `.anim` / FBX assets in Project and enter a positive finite value |
+| Changes are missing when reopening | Load the saved session `.asset`; exported `.anim` files do not store the editable arrangement |
 
----
+The segment editor displays keyframes and edits segments; use Unity's Animation window for individual keyframe value editing. Preview does not execute gameplay scripts, animation event receivers, or a runtime state machine. Third-party DCC files, Humanoid root motion, and IK / constraint workflows need validation with your own assets.
 
-## English
+## Further documentation
 
-This repository contains two Unity Editor tools, developed and verified with **Unity 6000.3.22f1**.
+- [Chinese quick-start Word guide with offline video](https://github.com/sakeka56/Unity-AnimationClipTools/releases/download/1.0.0/UnityAnimationTools-1.0.0-Guide.zh-CN.zip)
+- [1.0.0 release validation (Chinese)](Documentation/Releases/1.0.0.md)
 
-| Tool | Menu | Features |
-| --- | --- | --- |
-| Animation Batch Scaler | Tools > Animation Batch Scaler | Batch retiming by target duration or duration ratio, configurable output folder |
-| Animation Segment Editor | Window > Animation > Animation Segment Editor | Keyframe timeline, model preview, cuts, movement/reordering, per-segment retiming, editable names and export |
+- [Detailed segment editor guide (Chinese)](Documentation/AnimationSegmentEditor.md)
+- [Technical design and maintenance (Chinese)](Documentation/TechnicalDesign.md)
+- Existing regression reports: [batch scaler](TestReports/regression.txt), [segment editor](TestReports/segment-editor.txt), [navigation and folders](TestReports/segment-navigation.txt), [graphical interaction](TestReports/segment-editor-ui.txt). These are repository verification records for Unity 6000.3.22f1.
+- [License](LICENSE.txt)
 
-Clone this repository to use both tools. The **0.0.1 release package contains only the batch scaler**. To install the current tools in another project, copy the four batch-scaler scripts listed above and the `AnimationSegmentEditor` folder, including their `.meta` files. Tests and the release-export helper are optional.
+## Support
 
-For segment editing, load an AnimationClip and assign a compatible model/prefab for preview. **C** selects the cutting tool, **W** moves segments, and **S** retimes a segment by dragging its right edge. Space toggles playback. Name fields, segment counts and durations appear above the timeline. Shortcuts do not switch tools while editing text.
+If these tools help your workflow, you can support their development by scanning the code below. Thank you!
 
-Save an `AnimationEditSession.asset` to retain the editable arrangement. Export individual `.anim` segments, a combined timeline, or both to an existing folder inside Assets. Exports use unique filenames and keep the source asset unchanged. The combined timeline samples float curves at the source frame rate; gaps hold the preceding pose and segments do not overlap.
-
-The batch scaler supports standalone `.anim` and embedded FBX clips. A duration ratio of `0.5` doubles playback speed; `2` halves it. Writable standalone clips can be updated in place while retaining GUIDs and references. Embedded/read-only clips export as new files.
-
-Verification: **8 batch-scaler cases / 68 assertions**, **9 segment-editor cases / 482 assertions**, and a graphical mouse-interaction/preview test passed. Synthetic FBX fixtures do not cover all DCC, Humanoid, root-motion or IK workflows. The segment editor visualizes keyframes but does not implement the full per-key editing interface of Unity's Animation window.
-
-[User guide (Chinese)](Documentation/AnimationSegmentEditor.md) · [Technical design (Chinese)](Documentation/TechnicalDesign.md) · [License](LICENSE.txt)
-
-FBX files can be dropped directly into the source slot; use the dropdown for multiple takes. Preview supports automatic model lookup and F to frame. S retimes from anywhere on a segment, including repeated drags; dragging timeline scrollbars no longer changes the playhead.
-
-Timeline navigation supports mouse-anchored Alt+wheel zoom and two-axis middle-button panning. Newly created output folders are imported before assignment. A manually selected preview model becomes the project default only when the current clip has no renderable model; model-bearing FBX clips do not overwrite it.
+<img src="Documentation/Images/sponsor.jpg" alt="WeChat appreciation code for supporting the author" width="300" />

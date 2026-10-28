@@ -1,0 +1,9 @@
+PASS Target duration and source preservation
+PASS Weighted curve shape, loop settings and events
+PASS Ratio batch and custom output with unique filenames
+PASS Object reference curve scaling
+PASS Overwrite preserves GUID and references; Undo restores duration
+PASS Invalid values, folders and unsupported selections
+PASS FBX discovery, embedded clip export and source preservation
+PASS Chinese and English window creation
+PASS: 8 cases, 68 assertions; Unity 6000.3.22f1

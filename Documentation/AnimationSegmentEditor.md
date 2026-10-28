@@ -3,7 +3,7 @@
 入口：**Tools > 动画分段编辑器**，也可以从 Window > Animation > Animation Segment Editor 打开。
 使用 Unity 6000.3.22f1 开发和验证。
 
-安装及工具总览见 [README](../README.md)；数据结构、裁切算法和维护方式见 [技术设计文档](TechnicalDesign.md)。新增分段编辑器包含在当前源码中，已有的 0.0.1 Release 安装包只包含批量缩放器。
+安装及工具总览见 [中文 README](../README.zh-CN.md)；数据结构、裁切算法和维护方式见 [技术设计文档](TechnicalDesign.md)。1.0.0 Release 安装包包含分段编辑器和批量缩放器，旧版 0.0.1 安装包只包含批量缩放器。
 
 ## 开始编辑
 

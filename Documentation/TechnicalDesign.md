@@ -1,6 +1,6 @@
 # 动画工具技术设计
 
-适用工程：Unity 6000.3.22f1。本文描述当前仓库源码；`0.0.1` Release 的安装包只包含批量缩放器。
+适用工程：Unity 6000.3.22f1。本文描述当前仓库源码；`1.0.0` Release 安装包包含两套工具，旧版 `0.0.1` 安装包只包含批量缩放器。
 
 ## 模块与依赖
 
@@ -25,7 +25,7 @@ flowchart LR
     Export --> Assets["新的 .anim 资源"]
 ```
 
-分段编辑器依赖共用 `AnimationBatchScalerUtility` 的正有限数检查和 Assets 文件夹验证。单独导入分段编辑器时也必须保留该文件。`AnimationBatchScalerRelease.cs` 是旧版 0.0.1 打包辅助脚本，不是编辑器运行依赖；它的导出清单不包含新增分段工具。
+分段编辑器依赖共用 `AnimationBatchScalerUtility` 的正有限数检查和 Assets 文件夹验证。单独导入分段编辑器时也必须保留该文件。`AnimationBatchScalerRelease.cs` 是发布包导出脚本，不是编辑器运行依赖；调用 `AnimationBatchScalerRelease.Export` 会生成 `Build/UnityAnimationTools-1.0.0.unitypackage`，包含四个批量缩放脚本和完整的 `AnimationSegmentEditor` 文件夹，不包含测试与演示模型。
 
 ## 编辑工程与数据模型
 

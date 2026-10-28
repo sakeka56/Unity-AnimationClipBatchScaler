@@ -76,6 +76,6 @@ public abstract class AnimationBatchScalerWindow : EditorWindow
         }
         if (!string.IsNullOrEmpty(status)) EditorGUILayout.HelpBox(status, statusType);
         GUILayout.FlexibleSpace();
-        EditorGUILayout.LabelField("0.0.1", EditorStyles.miniLabel);
+        EditorGUILayout.LabelField("1.0.0", EditorStyles.miniLabel);
     }
 }
