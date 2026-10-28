@@ -164,6 +164,19 @@ public static class AnimationSegmentEditorTests
                 var importer = (ModelImporter)AssetImporter.GetAtPath(fbx);
                 importer.animationType = ModelImporterAnimationType.Generic; importer.importAnimation = true;
                 importer.preserveHierarchy = true; importer.SaveAndReimport();
+                var take = importer.defaultClipAnimations[0];
+                importer.clipAnimations = new[] {
+                    new ModelImporterClipAnimation { name = "First", takeName = take.takeName, firstFrame = take.firstFrame, lastFrame = (take.firstFrame + take.lastFrame) / 2 },
+                    new ModelImporterClipAnimation { name = "Second", takeName = take.takeName, firstFrame = (take.firstFrame + take.lastFrame) / 2, lastFrame = take.lastFrame } };
+                importer.SaveAndReimport();
+                var window = ScriptableObject.CreateInstance<AnimationSegmentEditorWindow>(); temporary.Add(window);
+                window.LoadSource(AssetDatabase.LoadAssetAtPath<GameObject>(fbx));
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                var options = (AnimationClip[])typeof(AnimationSegmentEditorWindow).GetField("sourceClips", flags).GetValue(window);
+                Check(options.Length == 2, "FBX slot exposes both imported takes");
+                window.LoadClip(options[1]);
+                Check(((AnimationEditSession)typeof(AnimationSegmentEditorWindow).GetField("session", flags).GetValue(window)).source == options[1], "Can select second FBX clip");
+                Check(((AnimationSegmentPreview)typeof(AnimationSegmentEditorWindow).GetField("preview", flags).GetValue(window)).HasTarget, "Embedded clip automatically locates FBX model");
                 var clip = AssetDatabase.LoadAllAssetsAtPath(fbx).OfType<AnimationClip>().First(c => !c.name.Contains("__preview"));
                 var edit = NewSession(clip); temporary.Add(edit); edit.Split(edit.segments[0], edit.Snap(clip.length / 2));
                 var paths = AnimationSegmentExporter.Export(edit, Root + "/Output", true, true);

@@ -17,9 +17,9 @@
 
 入口：**Tools > 动画分段编辑器**，或 **Window > Animation > Animation Segment Editor**。
 
-1. 指定 AnimationClip，或在 Project 中选中 `.anim` / FBX 动画子资源，点击“载入所选动画”。
+1. 将 `.anim` 或 FBX 文件直接拖入左上角插槽；FBX 包含多个动画时，通过旁边的下拉框选择。也可在 Project 中选中资源后点击“载入所选动画”。
 2. 左侧查看关键帧、对象引用轨道和动画事件；点击或拖动时间尺可调整播放头。可搜索轨道、缩放和滚动时间线。
-3. 右侧指定匹配的模型 / Prefab 预览。FBX 动画会尝试自动使用同文件模型；独立 `.anim` 需要自行指定模型。
+3. 右侧指定匹配的模型 / Prefab 预览。FBX 动画会自动使用同文件模型；独立 `.anim` 会尝试使用当前选择的模型或场景中引用该动画的对象。可点击“自动定位模型”，使用“模型居中 / F”重新取景。仅含骨骼的 FBX 需要另行指定带网格的匹配模型。
 4. 使用下列工具编辑片段，上方卡片可填写各片段的 **Name**，并显示片段数量、片段时长和总时长。
 5. 保存“编辑工程”以便下次继续；选择 Assets 内的输出文件夹，一键导出动画。
 
@@ -27,7 +27,7 @@
 | --- | --- | --- |
 | C | 点击片段或关键帧区域 | 按最近帧切割 |
 | W | 拖动片段色块 | 移动到空位或重排 |
-| S | 拖动片段右边缘 | 固定左端，改变时长和播放速度 |
+| S | 拖动片段色块（可连续操作） | 固定左端，改变时长和播放速度 |
 | 空格 | 播放 / 暂停 | 预览当前时间线 |
 | Ctrl/Cmd+Z | 撤销 | 撤销片段编辑或导出 |
 
@@ -61,8 +61,8 @@
 | 检查 | 结果 | 报告 |
 | --- | --- | --- |
 | 原批量缩放器回归 | 8 个场景，68 项断言通过 | [regression.txt](TestReports/regression.txt) |
-| 分段编辑器回归 | 9 个场景，479 项断言通过 | [segment-editor.txt](TestReports/segment-editor.txt) |
-| 独立图形窗口验收 | C 鼠标切割、W 拖动重排、S 右边缘变速、预览渲染通过 | [segment-editor-ui.txt](TestReports/segment-editor-ui.txt) |
+| 分段编辑器回归 | 9 个场景，482 项断言通过 | [segment-editor.txt](TestReports/segment-editor.txt) |
+| 独立图形窗口验收 | C 鼠标切割、W 拖动重排、S 连续变速、横向滚动条拖动、F 居中与预览渲染通过 | [segment-editor-ui.txt](TestReports/segment-editor-ui.txt) |
 
 回归不依赖额外测试包。关闭本工程的 Unity 编辑器后，在工程根目录运行：
 
@@ -101,6 +101,8 @@ Save an `AnimationEditSession.asset` to retain the editable arrangement. Export 
 
 The batch scaler supports standalone `.anim` and embedded FBX clips. A duration ratio of `0.5` doubles playback speed; `2` halves it. Writable standalone clips can be updated in place while retaining GUIDs and references. Embedded/read-only clips export as new files.
 
-Verification: **8 batch-scaler cases / 68 assertions**, **9 segment-editor cases / 479 assertions**, and a graphical mouse-interaction/preview test passed. Synthetic FBX fixtures do not cover all DCC, Humanoid, root-motion or IK workflows. The segment editor visualizes keyframes but does not implement the full per-key editing interface of Unity's Animation window.
+Verification: **8 batch-scaler cases / 68 assertions**, **9 segment-editor cases / 482 assertions**, and a graphical mouse-interaction/preview test passed. Synthetic FBX fixtures do not cover all DCC, Humanoid, root-motion or IK workflows. The segment editor visualizes keyframes but does not implement the full per-key editing interface of Unity's Animation window.
 
 [User guide (Chinese)](Documentation/AnimationSegmentEditor.md) · [Technical design (Chinese)](Documentation/TechnicalDesign.md) · [License](LICENSE.txt)
+
+FBX files can be dropped directly into the source slot; use the dropdown for multiple takes. Preview supports automatic model lookup and F to frame. S retimes from anywhere on a segment, including repeated drags; dragging timeline scrollbars no longer changes the playhead.

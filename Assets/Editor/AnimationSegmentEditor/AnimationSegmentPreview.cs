@@ -14,6 +14,7 @@ public sealed class AnimationSegmentPreview : IDisposable
     private Vector2 orbit = new Vector2(135, 15);
     private float zoom = 1;
     public bool HasTarget { get { return instance != null; } }
+    public bool HasRenderers { get { return instance != null && instance.GetComponentsInChildren<Renderer>(true).Length > 0; } }
 
     public void SetTarget(GameObject target)
     {
@@ -33,6 +34,12 @@ public sealed class AnimationSegmentPreview : IDisposable
         instance.SetActive(true);
         container.SetActive(true);
         foreach (var animator in instance.GetComponentsInChildren<Animator>(true)) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        Frame();
+    }
+
+    public void Frame()
+    {
+        if (instance == null) return;
         bounds = new Bounds(instance.transform.position, Vector3.one);
         var renderers = instance.GetComponentsInChildren<Renderer>(true);
         if (renderers.Length > 0)
@@ -64,7 +71,9 @@ public sealed class AnimationSegmentPreview : IDisposable
             preview.camera.clearFlags = CameraClearFlags.Color;
             preview.camera.backgroundColor = new Color(.12f, .13f, .16f);
             float radius = Mathf.Max(.1f, bounds.extents.magnitude);
-            float distance = radius * 4.8f * zoom;
+            float aspect = Mathf.Max(.1f, rect.width / rect.height);
+            float halfFov = Mathf.Atan(Mathf.Tan(15 * Mathf.Deg2Rad) * Mathf.Min(1, aspect));
+            float distance = radius / Mathf.Sin(halfFov) * 1.15f * zoom;
             var rotation = Quaternion.Euler(orbit.y, orbit.x, 0);
             preview.camera.transform.SetPositionAndRotation(bounds.center - rotation * Vector3.forward * distance, rotation);
             preview.camera.nearClipPlane = Mathf.Max(.001f, distance / 1000);

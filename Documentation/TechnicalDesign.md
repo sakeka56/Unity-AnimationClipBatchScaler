@@ -72,7 +72,7 @@ r = duration / (sourceEnd - sourceStart)
 x = timelineOriginX + time * pixelsPerSecond - horizontalScroll
 ```
 
-C/W/S 在窗口 `KeyDown` 时切换工具；编辑文本或按住 Ctrl/Cmd/Alt 时不处理这些快捷键。C 点击裁切所在片段；W 拖动色块；S 仅在右端约 12 像素的命中范围内开始拖拽。时间尺或非切割模式的关键帧区域可拖动播放头。
+C/W/S 在窗口 `KeyDown` 时切换工具；编辑文本或按住 Ctrl/Cmd/Alt 时不处理这些快捷键。C 点击裁切所在片段；W 拖动色块；S 在整个片段色块内开始拖拽，固定左端调整时长，光标显示与命中区域一致。时间尺或非切割模式的关键帧区域可拖动播放头。
 
 拖拽使用 `GUIUtility.hotControl` 持有鼠标，起始时记录一次完整对象 Undo；后续鼠标移动基于起始位置/时长计算，避免累计误差。普通命名、数值编辑、切割和删除同样记录 Session 的 Undo 并标记 Dirty。
 
@@ -152,8 +152,8 @@ newEventTime = oldEventTime * r
 | 入口 | 覆盖范围 | 已记录结果 |
 | --- | --- | --- |
 | `AnimationBatchScalerTests.Run` | 原批量缩放、权重/设置/事件、GUID、Undo、目录、FBX | 8 场景 / 68 断言 |
-| `AnimationSegmentEditorTests.Run` | 切割边界、加权裁切、阶梯/短轨道/包裹、移动缩放、对象事件、合成、导出、Session、FBX、隔离预览及快捷键 | 9 场景 / 479 断言（启用图形设备） |
-| `AnimationSegmentEditorVisualTests.Run` | 普通编辑器中的真实窗口事件：C 鼠标切割、W 拖拽重排、S 右端缩放、模型渲染纹理 | PASS |
+| `AnimationSegmentEditorTests.Run` | 切割边界、加权裁切、阶梯/短轨道/包裹、移动缩放、对象事件、合成、导出、Session、FBX、隔离预览及快捷键 | 9 场景 / 482 断言（启用图形设备） |
+| `AnimationSegmentEditorVisualTests.Run` | 普通编辑器中的真实窗口事件：C 鼠标切割、W 拖拽重排、连续 S 色块缩放、横向滚动条拖动且播放头不变、F 居中、模型渲染纹理 | PASS |
 
 前两个入口用 `unity run` 运行，命令见 [README](../README.md#验证与限制)。无图形模式可用于纯数据回归，但会跳过分段窗口的图形快捷键断言，因此断言数量不同。
 
@@ -182,3 +182,12 @@ unity open . --editor-path $editorPath --args $editorArgs
 当前实现为单源、单轨道的分段时间编辑器。尚未实现多动画混剪、多轨重叠、过渡混合或完整逐关键帧数值编辑。改变 Session 数据结构时应考虑已有 `.asset` 的序列化兼容性；更改上述算法时，优先扩展现有边界、事件归属、源资产不变性和图形拖拽用例。
 
 当前测试没有宣称覆盖所有第三方 FBX、Humanoid 根运动、运行时状态机或约束系统。仅改变文档时，可检查链接与差异；改变数据、导出或交互逻辑时，应执行对应回归并更新报告。
+
+
+## 2026-10-28 交互修复
+
+- 源资源插槽使用 `UnityEngine.Object` 接收 FBX 主资源与 AnimationClip。`LoadSource` 复用 `CollectClips` 排除预览剪辑，缓存可选动画并以 Popup 切换；直接选中子剪辑时只载入该剪辑。源资源和候选列表属于序列化窗口状态，编辑工程结构保持不变。
+- 模型定位顺序：同文件模型、当前选择的 GameObject、场景中引用源剪辑的 Animator / Animation。找不到关联时保留已指定模型或提示指定；不凭名称猜测任意模型。加载模型后先采样再计算包围盒。`Frame` 重置镜头缩放并根据当前 Renderer 包围盒与视口宽高比取景，按钮及 F 可重复触发。无网格的动画 FBX 会明确提示使用带网格的模型。
+- 缩放起始点不再限制为右端 12 像素；每次拖拽记录新的鼠标时间及起始时长，MouseUp 清空 dragging、scrubbing 和 hotControl，下次可直接继续缩放。缩放仍受邻段边界限制。
+- 自定义时间线 MouseDown 只命中时间尺、片段轨道及扣除原生横纵滚动条后的关键帧可视区；已有 hotControl 时不抢占输入。滚动条保留给 `GUI.BeginScrollView`，不会开启播放头拖拽。
+- 回归使用合成 FBX 导入为 First / Second 两个动画并验证候选及第二剪辑选择、自动模型定位。图形测试在首次缩放后不切换工具，从色块中间再拖一次；放大时间轴后拖动横向滚动条，断言滚动位置改变、播放头不变，并验证 F 重置缩放和最终模型渲染。

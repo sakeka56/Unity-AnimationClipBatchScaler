@@ -18,6 +18,8 @@ public class AnimationSegmentEditorWindow : EditorWindow
     [SerializeField] private float playhead;
     [SerializeField] private bool exportSegments = true, exportCombined = true;
     private Vector2 trackScroll, cardsScroll;
+    [SerializeField] private Object sourceAsset;
+    [SerializeField] private AnimationClip[] sourceClips = new AnimationClip[0];
     private string search = "", status;
     private bool playing, scrubbing;
     private double lastUpdate;
@@ -84,6 +86,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
     public void LoadClip(AnimationClip clip)
     {
         if (clip == null) return;
+        if (!sourceClips.Contains(clip)) { sourceAsset = clip; sourceClips = new[] { clip }; }
         var next = CreateInstance<AnimationEditSession>();
         try { next.Initialize(clip); }
         catch { Object.DestroyImmediate(next); throw; }
@@ -92,13 +95,37 @@ public class AnimationSegmentEditorWindow : EditorWindow
         selected = 0; playhead = 0; playing = false; trackScroll = Vector2.zero;
         var model = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(clip));
         if (model != null) SetPreview(model);
+        else AutoLocatePreview();
         RebuildTracks(); Sample(); Repaint();
+    }
+    public void LoadSource(Object asset)
+    {
+        if (asset == null) return;
+        var clips = AnimationBatchScalerUtility.CollectClips(new[] { asset }).ToArray();
+        if (clips.Length == 0) { status = "资源中没有可编辑的动画。"; return; }
+        sourceAsset = asset; sourceClips = clips; LoadClip(clips[0]);
+    }
+    private void AutoLocatePreview()
+    {
+        if (session == null || session.source == null) return;
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(session.source));
+        if (model == null && Selection.activeGameObject != null) model = Selection.activeGameObject;
+        if (model == null)
+            foreach (var animator in Object.FindObjectsByType<Animator>(FindObjectsSortMode.None))
+                if (AnimationUtility.GetAnimationClips(animator.gameObject).Contains(session.source)) { model = animator.gameObject; break; }
+        if (model == null)
+            foreach (var animation in Object.FindObjectsByType<Animation>(FindObjectsSortMode.None))
+                if (AnimationUtility.GetAnimationClips(animation.gameObject).Contains(session.source)) { model = animation.gameObject; break; }
+        if (model != null) SetPreview(model);
+        else if (previewTarget != null) { Sample(); preview.Frame(); }
+        else status = "未找到对应模型。请选择场景模型后点击自动定位模型，或将模型 / Prefab 拖入右侧插槽。";
     }
     private void SetPreview(GameObject target)
     {
         previewTarget = target;
         if (preview == null) preview = new AnimationSegmentPreview();
-        preview.SetTarget(target); Sample();
+        preview.SetTarget(target); Sample(); preview.Frame();
+        if (target != null && !preview.HasRenderers) status = "模型没有可渲染的网格。若 FBX 仅包含骨骼动画，请在右侧指定带网格且骨架匹配的模型。";
     }
     private void RebuildTracks()
     {
@@ -143,6 +170,11 @@ public class AnimationSegmentEditorWindow : EditorWindow
                 EditorGUILayout.LabelField("动画预览", EditorStyles.boldLabel);
                 var target = (GameObject)EditorGUILayout.ObjectField(previewTarget, typeof(GameObject), true);
                 if (target != previewTarget) SetPreview(target);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    if (GUILayout.Button("自动定位模型")) AutoLocatePreview();
+                    if (GUILayout.Button("模型居中 / F")) { Sample(); preview.Frame(); Repaint(); }
+                }
                 var rect = GUILayoutUtility.GetRect(100, 100, GUILayout.ExpandHeight(true), GUILayout.ExpandWidth(true));
                 if (preview != null) preview.Draw(rect);
                 using (new EditorGUILayout.HorizontalScope())
@@ -162,13 +194,19 @@ public class AnimationSegmentEditorWindow : EditorWindow
         using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
         {
             GUILayout.Label("ANIMATION CUT", EditorStyles.boldLabel, GUILayout.Width(125));
-            var source = (AnimationClip)EditorGUILayout.ObjectField(session.source, typeof(AnimationClip), false, GUILayout.MinWidth(150));
-            if (source != null && source != session.source) { try { LoadClip(source); } catch (Exception ex) { status = ex.Message; } }
+            var source = EditorGUILayout.ObjectField(sourceAsset != null ? sourceAsset : session.source, typeof(Object), false, GUILayout.MinWidth(150));
+            if (source != null && source != (sourceAsset != null ? sourceAsset : session.source))
+                try { LoadSource(source); } catch (Exception ex) { status = ex.Message; }
+            if (sourceClips.Length > 1)
+            {
+                int current = Array.IndexOf(sourceClips, session.source);
+                int next = EditorGUILayout.Popup(current, sourceClips.Select(c => c.name).ToArray(), GUILayout.Width(180));
+                if (next >= 0 && next != current) LoadClip(sourceClips[next]);
+            }
             GUILayout.Label(session.segments.Count + " 段   |   " + session.Duration.ToString("0.###") + " 秒", GUILayout.Width(170));
             if (GUILayout.Button("载入所选动画", EditorStyles.toolbarButton, GUILayout.Width(105)))
             {
-                var clips = AnimationBatchScalerUtility.CollectClips(Selection.objects);
-                if (clips.Count > 0) LoadClip(clips[0]); else status = "请先在 Project 中选择 AnimationClip 或 FBX。";
+                if (Selection.activeObject != null) LoadSource(Selection.activeObject); else status = "请先在 Project 中选择 AnimationClip 或 FBX。";
             }
         }
         using (new EditorGUILayout.HorizontalScope())
@@ -177,7 +215,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
             if (saved != null && saved != session)
             {
                 if (!EditorUtility.IsPersistent(session)) Object.DestroyImmediate(session);
-                session = saved; selected = 0; playhead = 0; playing = false; RebuildTracks(); Sample();
+                session = saved; sourceAsset = saved.source; sourceClips = new AnimationClip[0]; selected = 0; playhead = 0; playing = false; AutoLocatePreview(); RebuildTracks(); Sample();
             }
             if (GUILayout.Button("保存编辑工程…", GUILayout.Width(120))) SaveSession();
             GUILayout.Label("源动画保持不变 · 切换源动画会新建编辑工程", EditorStyles.miniLabel);
@@ -248,7 +286,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
         if (GUILayout.Button("恢复本段原始时长")) Edit("Reset segment duration", () => session.Resize(segment, segment.sourceEnd - segment.sourceStart));
         using (new EditorGUI.DisabledScope(session.segments.Count < 2))
             if (GUILayout.Button("移除此片段")) Edit("Remove segment", () => { session.segments.Remove(segment); selected = Mathf.Min(selected, session.segments.Count - 1); });
-        EditorGUILayout.HelpBox("C：点击时间线切割\nW：拖动片段，可移到空位或重排\nS：拖动片段右边缘调整时长\n滚轮：垂直滚动；Shift+滚轮：横向滚动\n空格：播放/暂停 · Ctrl/Cmd+Z：撤销\n空隙保持上一片段末帧，片段间直接切换。", MessageType.None);
+        EditorGUILayout.HelpBox("C：点击时间线切割\nW：拖动片段，可移到空位或重排\nS：拖动片段调整时长（左端固定）\n滚轮：垂直滚动；Shift+滚轮：横向滚动\n空格：播放/暂停 · Ctrl/Cmd+Z：撤销\n空隙保持上一片段末帧，片段间直接切换。", MessageType.None);
     }
     private void DrawExport()
     {
@@ -293,6 +331,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
         if (e.keyCode == KeyCode.C) tool = EditTool.Cut;
         else if (e.keyCode == KeyCode.W) tool = EditTool.Move;
         else if (e.keyCode == KeyCode.S) tool = EditTool.Scale;
+        else if (e.keyCode == KeyCode.F) { Sample(); preview.Frame(); }
         else if (e.keyCode == KeyCode.Space) playing = !playing;
         else return;
         e.Use(); Repaint();
@@ -319,7 +358,8 @@ public class AnimationSegmentEditorWindow : EditorWindow
         var band = new Rect(rect.x + LabelWidth, rect.y + RulerHeight, rect.width - LabelWidth, BandHeight);
         var ruler = new Rect(rect.x + LabelWidth, rect.y, rect.width - LabelWidth, RulerHeight);
         var body = new Rect(rect.x + LabelWidth, band.yMax, rect.width - LabelWidth, rect.height - RulerHeight - BandHeight);
-        TimelineInput(rect, ruler, band, body);
+        // Native scrollbars must receive their own mouse events.
+        TimelineInput(rect, ruler, band, new Rect(body.x, body.y, Mathf.Max(0, body.width - 17), Mathf.Max(0, body.height - 17)));
         GUI.Label(new Rect(rect.x + 8, rect.y + 5, LabelWidth - 10, 22), "属性 / 关键帧", EditorStyles.boldLabel);
         GUI.Label(new Rect(rect.x + 8, band.y + 12, LabelWidth - 10, 22), "片段轨道", EditorStyles.miniLabel);
         GUI.BeginGroup(ruler);
@@ -406,9 +446,9 @@ public class AnimationSegmentEditorWindow : EditorWindow
         if (session.source == null) return;
         if (tool == EditTool.Cut) EditorGUIUtility.AddCursorRect(new Rect(ruler.x, ruler.y, ruler.width, all.height), MouseCursor.ArrowPlus);
         else EditorGUIUtility.AddCursorRect(band, tool == EditTool.Scale ? MouseCursor.ResizeHorizontal : MouseCursor.MoveArrow);
-        if (e.type == EventType.MouseDown && e.button == 0 && (ruler.Contains(e.mousePosition) || band.Contains(e.mousePosition) || body.Contains(e.mousePosition)))
+        if (e.type == EventType.MouseDown && GUIUtility.hotControl == 0 && e.button == 0 && (ruler.Contains(e.mousePosition) || band.Contains(e.mousePosition) || body.Contains(e.mousePosition)))
         {
-            GUIUtility.keyboardControl = 0; playing = false;
+            GUIUtility.keyboardControl = 0; playing = false; scrubbing = false; dragging = null;
             float time = TimeAt(all, e.mousePosition.x);
             if (tool == EditTool.Cut && !ruler.Contains(e.mousePosition)) Cut(time);
             else if (band.Contains(e.mousePosition))
@@ -417,8 +457,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
                 if (segment != null)
                 {
                     selected = session.segments.IndexOf(segment);
-                    bool resizeHandle = Mathf.Abs(e.mousePosition.x - (all.x + LabelWidth + segment.End * pixelsPerSecond - trackScroll.x)) <= 12;
-                    if (tool == EditTool.Move || (tool == EditTool.Scale && resizeHandle))
+                    if (tool == EditTool.Move || tool == EditTool.Scale)
                     {
                         Undo.RegisterCompleteObjectUndo(session, tool == EditTool.Move ? "Move animation segment" : "Retime animation segment");
                         dragging = segment; dragMouseTime = time; dragStart = segment.start; dragDuration = segment.duration;
@@ -441,7 +480,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
                 else session.Resize(dragging, dragDuration + delta);
                 selected = session.segments.IndexOf(dragging); EditorUtility.SetDirty(session); Sample(); e.Use(); Repaint();
             }
-            if (e.type == EventType.MouseUp) { dragging = null; GUIUtility.hotControl = 0; e.Use(); }
+            if (e.type == EventType.MouseUp) { dragging = null; scrubbing = false; GUIUtility.hotControl = 0; dragControl = 0; e.Use(); }
         }
         if (scrubbing && GUIUtility.hotControl == dragControl)
         {

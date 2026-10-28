@@ -131,11 +131,35 @@ public static class AnimationSegmentEditorVisualTests
                 typeof(AnimationSegmentEditorWindow).GetMethod("Sample", Private).Invoke(window, null);
                 edit.Validate();
             }
+            if (ticks == 60)
+            {
+                var edit = Field<AnimationEditSession>("session");
+                var moved = edit.segments.Find(s => s.name.StartsWith("起步"));
+                Drag(5, 5.5f);
+                Check(Mathf.Abs(moved.duration - 3) < .04f, "Second S drag scales from segment body");
+                Check(GUIUtility.hotControl == 0, "Scale releases hot control");
+                typeof(AnimationSegmentEditorWindow).GetField("pixelsPerSecond", Private).SetValue(window, 300f);
+            }
+            if (ticks == 70)
+            {
+                var rect = Field<Rect>("timelineBounds");
+                var offset = Field<Vector2>("guiScreenOrigin") - window.position.position;
+                var start = new Vector2(rect.x + 230, rect.yMax - 8) + offset;
+                var end = start + new Vector2(110, 0);
+                float before = Field<float>("playhead");
+                Mouse(EventType.MouseDown, start); Mouse(EventType.MouseDrag, end, end - start); Mouse(EventType.MouseUp, end);
+                Check(Field<Vector2>("trackScroll").x > 0, "Horizontal scrollbar thumb drags");
+                Check(Mathf.Abs(Field<float>("playhead") - before) < .001f, "Scrollbar does not scrub playhead");
+                var preview = Field<AnimationSegmentPreview>("preview");
+                typeof(AnimationSegmentPreview).GetField("zoom", Private).SetValue(preview, 8f);
+                Key(KeyCode.F);
+                Check(Mathf.Abs((float)typeof(AnimationSegmentPreview).GetField("zoom", Private).GetValue(preview) - 1) < .001f, "F resets zoom to fit model");
+            }
             if (ticks == 85)
             {
                 Check(failure == null, failure);
                 Capture();
-                File.WriteAllText(Path.Combine(Reports, "segment-editor-ui.txt"), "PASS graphical editor layout, C mouse cuts, W mouse reorder, S mouse resize, preview sampling; Unity " + Application.unityVersion);
+                File.WriteAllText(Path.Combine(Reports, "segment-editor-ui.txt"), "PASS graphical editor layout, C mouse cuts, W mouse reorder, repeated S body resize, horizontal scrollbar drag without scrubbing, F framing, preview sampling; Unity " + Application.unityVersion);
                 Finish(0);
             }
         }

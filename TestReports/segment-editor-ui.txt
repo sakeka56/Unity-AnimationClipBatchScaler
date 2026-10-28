@@ -1,1 +1,1 @@
-PASS graphical editor layout, C mouse cuts, W mouse reorder, S mouse resize, preview sampling; Unity 6000.3.22f1
+PASS graphical editor layout, C mouse cuts, W mouse reorder, repeated S body resize, horizontal scrollbar drag without scrubbing, F framing, preview sampling; Unity 6000.3.22f1
