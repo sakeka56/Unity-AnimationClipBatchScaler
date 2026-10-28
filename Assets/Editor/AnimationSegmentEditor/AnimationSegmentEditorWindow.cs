@@ -21,7 +21,9 @@ public class AnimationSegmentEditorWindow : EditorWindow
     [SerializeField] private Object sourceAsset;
     [SerializeField] private AnimationClip[] sourceClips = new AnimationClip[0];
     private string search = "", status;
-    private bool playing, scrubbing;
+    private bool playing, scrubbing, panning;
+    private Vector2 panMouseStart, panScrollStart;
+    private int panControl;
     private double lastUpdate;
     private AnimationSegmentPreview preview;
     private readonly List<Track> tracks = new List<Track>();
@@ -47,6 +49,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
         minSize = new Vector2(1000, 650);
         if (session == null) session = CreateInstance<AnimationEditSession>();
         preview = new AnimationSegmentPreview();
+        if (previewTarget == null) previewTarget = LoadDefaultPreview();
         if (previewTarget != null) preview.SetTarget(previewTarget);
         EditorApplication.update += Tick;
         Undo.undoRedoPerformed += UndoChanged;
@@ -58,6 +61,8 @@ public class AnimationSegmentEditorWindow : EditorWindow
         Undo.undoRedoPerformed -= UndoChanged;
         if (preview != null) preview.Dispose();
         preview = null;
+        if ((panControl != 0 && GUIUtility.hotControl == panControl) || (dragControl != 0 && GUIUtility.hotControl == dragControl)) GUIUtility.hotControl = 0;
+        panning = scrubbing = false; dragging = null; panControl = dragControl = 0;
     }
     private void OnDestroy() { if (session != null && !EditorUtility.IsPersistent(session)) Object.DestroyImmediate(session); }
     private void OnFocus() { RebuildTracks(); }
@@ -93,9 +98,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
         if (session != null && !EditorUtility.IsPersistent(session)) Object.DestroyImmediate(session);
         session = next;
         selected = 0; playhead = 0; playing = false; trackScroll = Vector2.zero;
-        var model = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(clip));
-        if (model != null) SetPreview(model);
-        else AutoLocatePreview();
+        AutoLocatePreview();
         RebuildTracks(); Sample(); Repaint();
     }
     public void LoadSource(Object asset)
@@ -108,7 +111,8 @@ public class AnimationSegmentEditorWindow : EditorWindow
     private void AutoLocatePreview()
     {
         if (session == null || session.source == null) return;
-        var model = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(session.source));
+        var model = SourcePreviewModel();
+        if (model == null) model = LoadDefaultPreview();
         if (model == null && Selection.activeGameObject != null) model = Selection.activeGameObject;
         if (model == null)
             foreach (var animator in Object.FindObjectsByType<Animator>(FindObjectsSortMode.None))
@@ -116,9 +120,40 @@ public class AnimationSegmentEditorWindow : EditorWindow
         if (model == null)
             foreach (var animation in Object.FindObjectsByType<Animation>(FindObjectsSortMode.None))
                 if (AnimationUtility.GetAnimationClips(animation.gameObject).Contains(session.source)) { model = animation.gameObject; break; }
+        if (model == null && previewTarget == null) model = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(session.source));
         if (model != null) SetPreview(model);
         else if (previewTarget != null) { Sample(); preview.Frame(); }
         else status = "未找到对应模型。请选择场景模型后点击自动定位模型，或将模型 / Prefab 拖入右侧插槽。";
+    }
+    private static string DefaultPreviewKey { get { return "AnimationSegmentEditor.DefaultPreview." + Application.dataPath; } }
+    private GameObject SourcePreviewModel()
+    {
+        if (session == null || session.source == null) return null;
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(session.source));
+        return model != null && model.GetComponentsInChildren<Renderer>(true).Length > 0 ? model : null;
+    }
+    private static GameObject LoadDefaultPreview()
+    {
+        GlobalObjectId id;
+        GameObject target = null;
+        if (GlobalObjectId.TryParse(EditorPrefs.GetString(DefaultPreviewKey, ""), out id))
+            target = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(id) as GameObject;
+        // Unsaved scene objects can still survive closing/reopening this window in the current Editor.
+        if (target == null)
+        {
+            int instanceId = SessionState.GetInt(DefaultPreviewKey, 0);
+            if (instanceId != 0) target = Resources.FindObjectsOfTypeAll<GameObject>().FirstOrDefault(go => go.GetInstanceID() == instanceId);
+        }
+        return target;
+    }
+    private void SetPreviewManually(GameObject target)
+    {
+        if (target != null && session != null && session.source != null && SourcePreviewModel() == null)
+        {
+            EditorPrefs.SetString(DefaultPreviewKey, GlobalObjectId.GetGlobalObjectIdSlow(target).ToString());
+            SessionState.SetInt(DefaultPreviewKey, target.GetInstanceID());
+        }
+        SetPreview(target);
     }
     private void SetPreview(GameObject target)
     {
@@ -169,7 +204,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
             {
                 EditorGUILayout.LabelField("动画预览", EditorStyles.boldLabel);
                 var target = (GameObject)EditorGUILayout.ObjectField(previewTarget, typeof(GameObject), true);
-                if (target != previewTarget) SetPreview(target);
+                if (target != previewTarget) SetPreviewManually(target);
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     if (GUILayout.Button("自动定位模型")) AutoLocatePreview();
@@ -286,7 +321,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
         if (GUILayout.Button("恢复本段原始时长")) Edit("Reset segment duration", () => session.Resize(segment, segment.sourceEnd - segment.sourceStart));
         using (new EditorGUI.DisabledScope(session.segments.Count < 2))
             if (GUILayout.Button("移除此片段")) Edit("Remove segment", () => { session.segments.Remove(segment); selected = Mathf.Min(selected, session.segments.Count - 1); });
-        EditorGUILayout.HelpBox("C：点击时间线切割\nW：拖动片段，可移到空位或重排\nS：拖动片段调整时长（左端固定）\n滚轮：垂直滚动；Shift+滚轮：横向滚动\n空格：播放/暂停 · Ctrl/Cmd+Z：撤销\n空隙保持上一片段末帧，片段间直接切换。", MessageType.None);
+        EditorGUILayout.HelpBox("C：点击时间线切割\nW：拖动片段，可移到空位或重排\nS：拖动片段调整时长（左端固定）\n滚轮：垂直滚动；Shift+滚轮：横向滚动\nAlt+滚轮：以鼠标位置缩放；中键拖动：双向平移\n空格：播放/暂停 · Ctrl/Cmd+Z：撤销\n空隙保持上一片段末帧，片段间直接切换。", MessageType.None);
     }
     private void DrawExport()
     {
@@ -298,13 +333,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
                 string path = EditorUtility.OpenFolderPanel("选择 Assets 内的输出文件夹", Application.dataPath, "");
                 if (!string.IsNullOrEmpty(path))
                 {
-                    string relative = FileUtil.GetProjectRelativePath(path);
-                    try
-                    {
-                        if (string.IsNullOrEmpty(relative)) throw new ArgumentException("请选择当前工程 Assets 内的文件夹。");
-                        AnimationBatchScalerUtility.ValidateFolder(relative);
-                        outputFolder = AssetDatabase.LoadAssetAtPath<DefaultAsset>(relative);
-                    }
+                    try { SelectOutputFolder(path); }
                     catch (Exception ex) { status = ex.Message; }
                 }
             }
@@ -322,6 +351,25 @@ public class AnimationSegmentEditorWindow : EditorWindow
                     catch (Exception ex) { status = ex.Message; Debug.LogException(ex); }
                 }
         }
+    }
+
+    private void SelectOutputFolder(string path)
+    {
+        string full = Path.GetFullPath(path).Replace('\\', '/').TrimEnd('/');
+        string assets = Path.GetFullPath(Application.dataPath).Replace('\\', '/').TrimEnd('/');
+        var comparison = Application.platform == RuntimePlatform.WindowsEditor ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!(full.Equals(assets, comparison) || full.StartsWith(assets + "/", comparison)) || !Directory.Exists(full))
+            throw new ArgumentException("请选择当前工程 Assets 内已存在的文件夹。");
+        string relative = "Assets" + full.Substring(assets.Length);
+        // A folder created in the native dialog may not have a meta/DefaultAsset yet.
+        // Refresh synchronously before validation/loading, including new parent directories.
+        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+        AnimationBatchScalerUtility.ValidateFolder(relative);
+        var folder = AssetDatabase.LoadAssetAtPath<DefaultAsset>(relative);
+        if (folder == null) throw new ArgumentException("文件夹尚未完成导入，请重试。");
+        outputFolder = folder;
+        status = "输出目录：" + relative;
+        Repaint();
     }
 
     private void Shortcuts()
@@ -353,6 +401,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
         if (Event.current.type == EventType.Repaint) timelineBounds = rect;
         GUI.Box(rect, GUIContent.none);
         var rows = tracks.Where(t => search.Length == 0 || t.label.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+        TimelineNavigation(rect, rows.Count);
         float contentWidth = Mathf.Max(rect.width - LabelWidth, (session.Duration + 2) * pixelsPerSecond);
         float contentHeight = Mathf.Max(rect.height - RulerHeight - BandHeight - 17, (rows.Count + 1) * RowHeight);
         var band = new Rect(rect.x + LabelWidth, rect.y + RulerHeight, rect.width - LabelWidth, BandHeight);
@@ -400,7 +449,7 @@ public class AnimationSegmentEditorWindow : EditorWindow
             {
                 Color tint = ColorFor(segment); tint.a = .12f;
                 EditorGUI.DrawRect(new Rect(segment.start * pixelsPerSecond, y, segment.duration * pixelsPerSecond, RowHeight - 1), tint);
-                var times = row == 0 ? AnimationUtility.GetAnimationEvents(session.source).Select(e => e.time) : rows[row - 1].times;
+                var times = row == 0 ? (session.source != null ? AnimationUtility.GetAnimationEvents(session.source).Select(e => e.time) : Enumerable.Empty<float>()) : rows[row - 1].times;
                 foreach (float key in times)
                 {
                     if (key < segment.sourceStart || key > segment.sourceEnd) continue;
@@ -437,12 +486,61 @@ public class AnimationSegmentEditorWindow : EditorWindow
             EditorGUI.DrawRect(new Rect(headX, rect.y, 2, RulerHeight + BandHeight), new Color(1, .36f, .30f));
         if (session.source == null) GUI.Label(new Rect(body.x + 20, body.y + 20, body.width - 40, 60), "载入一个 AnimationClip 开始编辑。", EditorStyles.boldLabel);
     }
+    private void ClampTimelineScroll(Rect all, int rowCount)
+    {
+        float viewWidth = Mathf.Max(0, all.width - LabelWidth - 17);
+        float viewHeight = Mathf.Max(0, all.height - RulerHeight - BandHeight - 17);
+        float width = Mathf.Max(all.width - LabelWidth, (session.Duration + 2) * pixelsPerSecond);
+        float height = Mathf.Max(viewHeight, (rowCount + 1) * RowHeight);
+        trackScroll.x = Mathf.Clamp(trackScroll.x, 0, Mathf.Max(0, width - viewWidth));
+        trackScroll.y = Mathf.Clamp(trackScroll.y, 0, Mathf.Max(0, height - viewHeight));
+    }
+    private void TimelineNavigation(Rect all, int rowCount)
+    {
+        var e = Event.current;
+        int control = GUIUtility.GetControlID(FocusType.Passive);
+        if (e.type == EventType.ScrollWheel && all.Contains(e.mousePosition) && GUIUtility.hotControl == 0)
+        {
+            if (e.alt)
+            {
+                float anchor = Mathf.Clamp(e.mousePosition.x - all.x - LabelWidth, 0, Mathf.Max(0, all.width - LabelWidth - 17));
+                float time = (trackScroll.x + anchor) / pixelsPerSecond;
+                pixelsPerSecond = Mathf.Clamp(pixelsPerSecond * Mathf.Exp(-e.delta.y * .12f), 20, 500);
+                trackScroll.x = time * pixelsPerSecond - anchor;
+                ClampTimelineScroll(all, rowCount); e.Use(); Repaint();
+            }
+            else if (e.shift)
+            {
+                trackScroll.x += e.delta.y * 25;
+                ClampTimelineScroll(all, rowCount); e.Use(); Repaint();
+            }
+        }
+        if (e.type == EventType.MouseDown && e.button == 2 && all.Contains(e.mousePosition) && GUIUtility.hotControl == 0)
+        {
+            panning = true; panMouseStart = e.mousePosition; panScrollStart = trackScroll;
+            panControl = control; GUIUtility.hotControl = control;
+            e.Use(); Repaint();
+        }
+        if (panning && GUIUtility.hotControl == panControl)
+        {
+            EditorGUIUtility.AddCursorRect(all, MouseCursor.Pan);
+            if (e.type == EventType.MouseDrag)
+            {
+                trackScroll = panScrollStart - (e.mousePosition - panMouseStart);
+                ClampTimelineScroll(all, rowCount); e.Use(); Repaint();
+            }
+            if (e.type == EventType.MouseUp)
+            {
+                panning = false; GUIUtility.hotControl = 0; panControl = 0; e.Use(); Repaint();
+            }
+        }
+        else if (panning) { panning = false; panControl = 0; }
+    }
+
     private void TimelineInput(Rect all, Rect ruler, Rect band, Rect body)
     {
         var e = Event.current;
         int control = GUIUtility.GetControlID(FocusType.Passive);
-        if (e.type == EventType.ScrollWheel && all.Contains(e.mousePosition) && e.shift)
-        { trackScroll.x = Mathf.Max(0, trackScroll.x + e.delta.y * 25); e.Use(); Repaint(); }
         if (session.source == null) return;
         if (tool == EditTool.Cut) EditorGUIUtility.AddCursorRect(new Rect(ruler.x, ruler.y, ruler.width, all.height), MouseCursor.ArrowPlus);
         else EditorGUIUtility.AddCursorRect(band, tool == EditTool.Scale ? MouseCursor.ResizeHorizontal : MouseCursor.MoveArrow);

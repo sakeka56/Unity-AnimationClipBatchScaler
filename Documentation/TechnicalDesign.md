@@ -147,12 +147,16 @@ newEventTime = oldEventTime * r
 
 ## 测试与复现
 
+交互迭代优先复用已经打开的 Unity 编辑器，从 `Tools > Animation Segment Tests > Navigation, folders and default preview` 调用 `AnimationSegmentEditorNavigationTests.Run`。该入口不退出 Unity、不清空 Undo，也不复用用户的编辑窗口；结束后恢复测试前的选择和默认预览偏好。下列既有离线入口保留供 CI / 工程未打开时使用，不要为日常交互验证反复启动编辑器。
+
+
 现有结果由本地 Unity 6000.3.22f1 生成：
 
 | 入口 | 覆盖范围 | 已记录结果 |
 | --- | --- | --- |
 | `AnimationBatchScalerTests.Run` | 原批量缩放、权重/设置/事件、GUID、Undo、目录、FBX | 8 场景 / 68 断言 |
 | `AnimationSegmentEditorTests.Run` | 切割边界、加权裁切、阶梯/短轨道/包裹、移动缩放、对象事件、合成、导出、Session、FBX、隔离预览及快捷键 | 9 场景 / 482 断言（启用图形设备） |
+| `AnimationSegmentEditorNavigationTests.Run` | 运行中编辑器验证鼠标锚点缩放、双向平移、旧滚轮导航、新建目录同步、默认模型持久化及 FBX 优先级 | 30 断言通过，见 [定向报告](../TestReports/segment-navigation.txt) |
 | `AnimationSegmentEditorVisualTests.Run` | 普通编辑器中的真实窗口事件：C 鼠标切割、W 拖拽重排、连续 S 色块缩放、横向滚动条拖动且播放头不变、F 居中、模型渲染纹理 | PASS |
 
 前两个入口用 `unity run` 运行，命令见 [README](../README.md#验证与限制)。无图形模式可用于纯数据回归，但会跳过分段窗口的图形快捷键断言，因此断言数量不同。
@@ -187,7 +191,28 @@ unity open . --editor-path $editorPath --args $editorArgs
 ## 2026-10-28 交互修复
 
 - 源资源插槽使用 `UnityEngine.Object` 接收 FBX 主资源与 AnimationClip。`LoadSource` 复用 `CollectClips` 排除预览剪辑，缓存可选动画并以 Popup 切换；直接选中子剪辑时只载入该剪辑。源资源和候选列表属于序列化窗口状态，编辑工程结构保持不变。
-- 模型定位顺序：同文件模型、当前选择的 GameObject、场景中引用源剪辑的 Animator / Animation。找不到关联时保留已指定模型或提示指定；不凭名称猜测任意模型。加载模型后先采样再计算包围盒。`Frame` 重置镜头缩放并根据当前 Renderer 包围盒与视口宽高比取景，按钮及 F 可重复触发。无网格的动画 FBX 会明确提示使用带网格的模型。
+- 模型定位顺序：同文件带 Renderer 的模型、已保存的本项目默认模型、当前选择的 GameObject、场景中引用源剪辑的 Animator / Animation。找不到关联时保留已指定模型或提示指定；不凭名称猜测任意模型。加载模型后先采样再计算包围盒。`Frame` 重置镜头缩放并根据当前 Renderer 包围盒与视口宽高比取景，按钮及 F 可重复触发。无网格的动画 FBX 会明确提示使用带网格的模型。
 - 缩放起始点不再限制为右端 12 像素；每次拖拽记录新的鼠标时间及起始时长，MouseUp 清空 dragging、scrubbing 和 hotControl，下次可直接继续缩放。缩放仍受邻段边界限制。
 - 自定义时间线 MouseDown 只命中时间尺、片段轨道及扣除原生横纵滚动条后的关键帧可视区；已有 hotControl 时不抢占输入。滚动条保留给 `GUI.BeginScrollView`，不会开启播放头拖拽。
 - 回归使用合成 FBX 导入为 First / Second 两个动画并验证候选及第二剪辑选择、自动模型定位。图形测试在首次缩放后不切换工具，从色块中间再拖一次；放大时间轴后拖动横向滚动条，断言滚动位置改变、播放头不变，并验证 F 重置缩放和最终模型渲染。
+
+
+## 时间轴导航、目录同步与默认模型
+
+### 鼠标手势
+
+`TimelineNavigation` 在计算时间轴内容宽度和绘制 `GUI.BeginScrollView` 之前处理导航，使缩放后的滚动范围立即生效。Alt＋滚轮对 px/s 进行指数缩放（`exp(-deltaY * 0.12)`），限定在 20～500。缩放前记录鼠标时间 `t = (scrollX + mouseOffset) / oldScale`，再用 `scrollX = t * newScale - mouseOffset` 保持鼠标锚点，最后限制到实际可滚动范围。Alt 优先于 Shift；普通滚轮继续由原生 ScrollView 处理。
+
+中键按下仅在时间轴范围内且无其他 hotControl 时捕获鼠标，记录鼠标起点及双轴滚动起点。拖动用起点差值计算 scroll，避免累计误差；松开在窗口内任何位置均释放捕获，禁用窗口时也清理。导航不操作 Session、不移动播放头、不创建 Undo 项。中键和左右滚动均限制到内容范围。
+
+### 系统文件夹弹窗
+
+`SelectOutputFolder` 先规范绝对路径并确认其位于当前工程 Assets 下、目录实际存在，再调用 `AssetDatabase.Refresh(ForceSynchronousImport)`。刷新在 `ValidateFolder` 和 `LoadAssetAtPath<DefaultAsset>` 之前，因此系统弹窗中新建且尚无 meta 的文件夹（包含新父目录）会先注册到资源数据库，再写入输出插槽；失败时不替换原目录。
+
+### 默认预览模型
+
+持久化键为 `AnimationSegmentEditor.DefaultPreview.` 加项目 `Application.dataPath`，使用 EditorPrefs 保存 GlobalObjectId，属于本机每项目偏好，不改写动画或编辑工程资产。SessionState 保存实例 ID 作为尚未保存场景对象在当前 Editor 会话中的后备。
+
+只有 `SetPreviewManually` 在当前 Clip 已载入且 `SourcePreviewModel` 无可渲染模型时写入偏好。自动 `SetPreview`、切换 Clip 以及带模型 Clip 的手动替换均不写入默认值；清空预览插槽也不删除已记住的默认模型。选择优先级是同文件带 Renderer 的模型、已保存默认模型、当前选择对象、场景中引用 Clip 的对象，最后才是无网格 FBX 的骨骼层级或既有目标。仅含骨骼的 FBX 归入无可渲染模型，允许记录手动匹配的带网格模型。
+
+窗口 OnEnable 恢复目标，关闭窗口后新实例仍可解析默认资产；重新载入 Clip 会重新应用上述优先级。模型资产可跨 Editor 重开恢复；场景对象只能在其原场景已载入时解析，未保存场景仅保证同一 Editor 会话。默认对象被删除或不可解析时继续既有自动定位及手动指定流程。

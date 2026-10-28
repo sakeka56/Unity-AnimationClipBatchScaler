@@ -19,9 +19,9 @@
 
 1. 将 `.anim` 或 FBX 文件直接拖入左上角插槽；FBX 包含多个动画时，通过旁边的下拉框选择。也可在 Project 中选中资源后点击“载入所选动画”。
 2. 左侧查看关键帧、对象引用轨道和动画事件；点击或拖动时间尺可调整播放头。可搜索轨道、缩放和滚动时间线。
-3. 右侧指定匹配的模型 / Prefab 预览。FBX 动画会自动使用同文件模型；独立 `.anim` 会尝试使用当前选择的模型或场景中引用该动画的对象。可点击“自动定位模型”，使用“模型居中 / F”重新取景。仅含骨骼的 FBX 需要另行指定带网格的匹配模型。
+3. 右侧指定匹配的模型 / Prefab 预览。没有自带可渲染模型的动画，在手动指定模型后会将其记为本项目的默认预览模型，关闭并重开窗口仍可复用；带模型的 FBX 优先使用自身模型。FBX 动画会自动使用同文件模型；独立 `.anim` 会尝试使用当前选择的模型或场景中引用该动画的对象。可点击“自动定位模型”，使用“模型居中 / F”重新取景。仅含骨骼的 FBX 需要另行指定带网格的匹配模型。
 4. 使用下列工具编辑片段，上方卡片可填写各片段的 **Name**，并显示片段数量、片段时长和总时长。
-5. 保存“编辑工程”以便下次继续；选择 Assets 内的输出文件夹，一键导出动画。
+5. 保存“编辑工程”以便下次继续；选择 Assets 内的输出文件夹，一键导出动画。“选择…”弹窗中新建的目录会自动同步到插槽。
 
 | 快捷键 | 操作 | 效果 |
 | --- | --- | --- |
@@ -29,6 +29,8 @@
 | W | 拖动片段色块 | 移动到空位或重排 |
 | S | 拖动片段色块（可连续操作） | 固定左端，改变时长和播放速度 |
 | 空格 | 播放 / 暂停 | 预览当前时间线 |
+| Alt＋滚轮 | 时间轴上滚动 | 以鼠标所在时间为中心缩放 |
+| 鼠标中键 | 时间轴内拖动 | 同时左右、上下平移 |
 | Ctrl/Cmd+Z | 撤销 | 撤销片段编辑或导出 |
 
 片段以不同颜色区分，支持右侧数值精调。单轨道不允许重叠，空隙保持上一段末帧。源动画不被改写。
@@ -62,9 +64,12 @@
 | --- | --- | --- |
 | 原批量缩放器回归 | 8 个场景，68 项断言通过 | [regression.txt](TestReports/regression.txt) |
 | 分段编辑器回归 | 9 个场景，482 项断言通过 | [segment-editor.txt](TestReports/segment-editor.txt) |
+| 运行中编辑器定向回归 | 30 项断言通过：Alt＋滚轮、中键平移、新建目录同步、默认模型保存条件 | [segment-navigation.txt](TestReports/segment-navigation.txt) |
 | 独立图形窗口验收 | C 鼠标切割、W 拖动重排、S 连续变速、横向滚动条拖动、F 居中与预览渲染通过 | [segment-editor-ui.txt](TestReports/segment-editor-ui.txt) |
 
-回归不依赖额外测试包。关闭本工程的 Unity 编辑器后，在工程根目录运行：
+回归不依赖额外测试包。日常交互验证复用当前编辑器：选择 **Tools > Animation Segment Tests > Navigation, folders and default preview**。该入口创建临时测试窗口和资源，结束后恢复选择与默认模型设置，保持 Unity 运行。
+
+以下完整数据回归命令用于本工程尚未打开的离线验证：
 
 ```powershell
 unity run . --editor-path "<本地 Unity.exe 的绝对路径>" --timeout 240 --log-file Logs/regression.log --no-tail -- -nographics -executeMethod AnimationBatchScalerTests.Run
@@ -106,3 +111,5 @@ Verification: **8 batch-scaler cases / 68 assertions**, **9 segment-editor cases
 [User guide (Chinese)](Documentation/AnimationSegmentEditor.md) · [Technical design (Chinese)](Documentation/TechnicalDesign.md) · [License](LICENSE.txt)
 
 FBX files can be dropped directly into the source slot; use the dropdown for multiple takes. Preview supports automatic model lookup and F to frame. S retimes from anywhere on a segment, including repeated drags; dragging timeline scrollbars no longer changes the playhead.
+
+Timeline navigation supports mouse-anchored Alt+wheel zoom and two-axis middle-button panning. Newly created output folders are imported before assignment. A manually selected preview model becomes the project default only when the current clip has no renderable model; model-bearing FBX clips do not overwrite it.

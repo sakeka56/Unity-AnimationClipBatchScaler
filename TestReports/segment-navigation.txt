@@ -1,0 +1,1 @@
+PASS: 30 assertions; Alt+wheel anchored zoom, middle-button two-axis pan, existing wheel navigation, native new-folder import, conditional default model persistence, model-bearing FBX precedence; Unity 6000.3.22f1; in existing Editor (no restart/exit).
